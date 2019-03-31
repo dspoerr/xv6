@@ -370,6 +370,11 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 //@@@@ initalizes shared memory physical addresses
 #define SHMEM_PAGES (4)
 int shmem_count[SHMEM_PAGES];
+
+//track what pages each process has used
+//max 10 processes
+int shmem_procpages[10][SHMEM_PAGES+1]; 
+
 void *shmem_addr[SHMEM_PAGES];
 
 void
@@ -401,20 +406,64 @@ void*
 shmem_access(int pgNum)
 {
    void* la = NULL;
-   int la2;
+   int vmindex = 1;
+   int arrindex = 11;
+   int i, j;
    if (pgNum < 0 || pgNum > 3)
    {
 	cprintf("help!");
-	return la;
+        return la;
+   }
+   cprintf("proc id: %d\n", proc->pid);
+   for(i = 0; i < 10; i++) {
+      //quick check to find a spot that is not being occupied
+      //saves a second iteration of the array
+      if (arrindex == 11 && shmem_procpages[i][0] == 0) {
+         arrindex = i;
+         cprintf("arrindex = %d\n", arrindex);
+      //if the spot is currently occupied, we must check if
+      //it is occupied by the current process
+      //if so, how many pages does it have? 
+      //also, is the current page arg in use?
+      //if not, we add a new entry to the table. 
+      } else {
+           if (proc->pid == shmem_procpages[i][0]) {
+              cprintf("pid found at index: %d\n", i);
+              //if there is an existing value for this process + pgNum
+              //return the address value saved
+              if (shmem_procpages[i][pgNum+1] != 0) {
+                 cprintf("Seems like this page is in use!\n");
+                 cprintf("Returning value: %p", shmem_procpages[i][pgNum+1]);
+                 return (void*) shmem_procpages[i][pgNum+1];
+              }
+              //no existing value for this process + pgNum
+              //find out how many shared pages this process has
+              for(j = 1; j < 5; j ++) {
+                 if (shmem_procpages[i][j] != 0) {
+                    vmindex = vmindex + 1;
+		    cprintf("vmindex incremented: %d\n", vmindex);
+                 }
+              }
+           } 
+      }
+      
+   }
+
+   //returns null if argint is left at the init value (no empty space found)
+   if (arrindex == 11) {
+      cprintf("Max number of processes is using shared pages!\n");
+      return la;
    }
    cprintf("PgNum is: %d\n",pgNum); 
-   la2 = (pgNum+1) * PGSIZE;
    cprintf("Usertop is: %p\n", USERTOP);
-   cprintf("la2 is: %d\n", la2);
-   la = (void*)(USERTOP - la2);
+   la = (void*)(USERTOP - (vmindex * PGSIZE));
+   cprintf("la as an int looks like: %d\n", la);
+   cprintf("la as a pointer looks like %p\n", la);
    cprintf("current la: %p\n", la);
    mappages(proc->pgdir, la, PGSIZE, (unsigned int) shmem_addr[pgNum], PTE_W | PTE_U);
    shmem_count[pgNum]  = shmem_count[pgNum] + 1;
+   shmem_procpages[arrindex][0] = proc->pid;
+   shmem_procpages[arrindex][pgNum+1] = (int) la;
    return la; 
 }
 

@@ -13,7 +13,7 @@
 int main()
 {
 	void* ptr;
-	ptr = shmem_access(0);
+	ptr = shmem_access(2);
 	if(ptr == NULL)
 	{
 		INFO();
@@ -27,7 +27,7 @@ int main()
 		exit();
 	}
 
-	ptr = shmem_access(1);
+	ptr = shmem_access(3);
 	if(ptr == NULL)
 	{
 		INFO();
@@ -41,7 +41,7 @@ int main()
 		exit();
 	}
 
-	ptr = shmem_access(2);
+	ptr = shmem_access(0);
 	if(ptr == NULL)
 	{
 		INFO();
@@ -53,7 +53,7 @@ int main()
 		printf(1, "TEST FAILED");
 	}
 
-	ptr = shmem_access(3);
+	ptr = shmem_access(1);
 	if(ptr == NULL)
 	{
 		INFO();
