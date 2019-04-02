@@ -231,8 +231,9 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   char *mem;
   uint a;
 
-  if(newsz > USERTOP)
+  if(newsz > USERTOP) {
     return 0;
+  }
   if(newsz < oldsz)
     return oldsz;
 
@@ -324,8 +325,6 @@ copyuvm(pde_t *pgdir, uint sz)
     memmove(mem, (char*)pa, PGSIZE);
     if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
       goto bad;
-    cprintf("Copying parent memory. Physical address: %p\n", pa);
-    cprintf("Copying parent memory. Page at: %p\n", pte);
   }
   return d;
 
@@ -448,6 +447,9 @@ shmem_access(int pgNum)
       return la;
    }
    la = (void*)(USERTOP - (vmindex * PGSIZE));
+   if (proc->sz > la) {
+      return (void*) NULL;
+   }
    mappages(proc->pgdir, la, PGSIZE, (unsigned int) shmem_addr[pgNum], PTE_W | PTE_U);
    shmem_count[pgNum]  = shmem_count[pgNum] + 1;
    shmem_procpages[arrindex][0] = proc->pgdir;
