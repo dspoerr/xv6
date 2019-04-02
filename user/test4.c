@@ -30,7 +30,9 @@ int shmem_access_double_call_fork()
 	else if (pid == 0)
 	{
 		void *ptr2;
-		ptr2 = shmem_access(3);
+		printf(1, "child is attempting to use shmem3\n");
+                ptr2 = shmem_access(3);
+                printf(1, "pointer val at: %d\n", (int) ptr2);
 		//printf(1,"child ptr2 = %d\n", (int) ptr2);
 		if(ptr2 == NULL)
 		{
@@ -51,3 +53,4 @@ int shmem_access_double_call_fork()
 	printf(1, "%s TEST PASSED\n", __FILE__);
 	exit();
 }
+

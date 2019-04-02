@@ -267,11 +267,13 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   for(; a  < oldsz; a += PGSIZE){
     pte = walkpgdir(pgdir, (char*)a, 0);
     if(pte && (*pte & PTE_P) != 0){
-      pa = PTE_ADDR(*pte);
-      //@@@@check ifb physical  addressv
+      pa = PTE_ADDR(*pte); 
       if(pa == 0)
         panic("kfree");
-      kfree((char*)pa);
+      //manual check to see if the physical address is shared pages addr
+      if(pa != 16650240 && pa != 16646144 && pa != 16642048 && pa != 16637952) {
+         kfree((char*)pa);
+      }
       *pte = 0;
     }
   }
@@ -319,6 +321,8 @@ copyuvm(pde_t *pgdir, uint sz)
     memmove(mem, (char*)pa, PGSIZE);
     if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
       goto bad;
+    cprintf("Copying parent memory. Physical address: %p\n", pa);
+    cprintf("Copying parent memory. Page at: %p\n", pte);
   }
   return d;
 
