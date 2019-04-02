@@ -277,6 +277,9 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       *pte = 0;
     }
   }
+  cprintf("calling shmem dealloc \n");
+  shmem_dealloc(pgdir);
+
   return newsz;
 }
 
@@ -398,84 +401,69 @@ shmeminit(void)
    cprintf("Memory cleared from %x\n", (unsigned int) shmem_addr[i]);
    }
 }
-//shmem_access
-   //map shared pages to page table directory, use mappages function
-   //figure out how to stop program from overwriting with heap
-   //figure out how to stop program from clearing shared pages.
 
-   //process needs to pass their page table, the page number they want access to
-   //shmem_access uses the addr[] array for PA, USERTOP-whatever*pagesize for LA
-   //what is  perm??
+// allows process to map to shared pages
 void*
 shmem_access(int pgNum)
 {
    void* la = NULL;
    int vmindex = 1;
-   int arrindex = 11;
+   int arrindex = 0;
+   int procFound = 0;
    int i, j;
    if (pgNum < 0 || pgNum > 3)
    {
-		 cprintf("help!");
 		 return la;
    }
-	 cprintf("proc id: %d\n", proc->pid);
-   for(i = 0; i < 10; i++)
-	 {
-		 //quick check to find a spot that is not being occupied
-		 //saves a second iteration of the array
-		 if (arrindex == 11 && shmem_procpages[i][0] == 0)
-		 {
-			 arrindex = i;
-			 cprintf("arrindex = %d\n", arrindex);
-			 //if the spot is currently occupied, we must check if
-			 //it is occupied by the current process
-			 //if so, how many pages does it have?
-			 //also, is the current page arg in use?
-			 //if not, we add a new entry to the table.
-		 }
-		 else
-		 {
-			 if (proc->pid == shmem_procpages[i][0])
-			 {
-				 cprintf("pid found at index: %d\n", i);
-				 //if there is an existing value for this process + pgNum
-				 //return the address value saved
-				 if (shmem_procpages[i][pgNum+1] != 0)
-				 {
-					 cprintf("Seems like this page is in use!\n");
-					 cprintf("Returning value: %p", shmem_procpages[i][pgNum+1]);
-					 return (void*) shmem_procpages[i][pgNum+1];
-				 }
-				 //no existing value for this process + pgNum
-				 //find out how many shared pages this process has
-				 for(j = 1; j < 5; j ++)
-				 {
-					 if (shmem_procpages[i][j] != 0)
-					 {
-						 vmindex = vmindex + 1;
-						 cprintf("vmindex incremented: %d\n", vmindex);
-					 }
-				 }
-			 }
-		 }
-	 }
+   for(i = 0; i < 10;i++) {
+      //find a spot that is not being occupied
+      if (shmem_procpages[i][0] == 0) {
+         if (i < arrindex && procFound == 0) {
+            arrindex = i;
+         }
+      } else { //location in array is not 0.
+         //if there is existing value for proc, and the pgNum location is not 0
+         //return value of virtual memory pointer
+         if (proc->pgdir == shmem_procpages[i][0]) {
+            procFound = 1; 
+         }
+         if (shmem_procpages[i][pgNum+1] != 0) {
+	    cprintf("Seems like this page is in use!\n");
+       	    return (void*) shmem_procpages[i][pgNum+1];
+         } else { // no existing value for this process + pgNum combination
+	    for(j = 1; j < 5; j ++) {
+               //increment to determine appropriate virt mem value to avoid fragmentation
+	       if (shmem_procpages[i][j] != 0) {
+	          vmindex = vmindex + 1;
+	          cprintf("vmindex incremented: %d\n", vmindex);
+	       }//end if
+	    }//end counter
+         }//end else
+      }//end else
+   }//end for loop
 
    //returns null if argint is left at the init value (no empty space found)
    if (arrindex == 11) {
       cprintf("Max number of processes is using shared pages!\n");
       return la;
    }
-   cprintf("PgNum is: %d\n",pgNum);
-   cprintf("Usertop is: %p\n", USERTOP);
    la = (void*)(USERTOP - (vmindex * PGSIZE));
-   cprintf("la as an int looks like: %d\n", la);
-   cprintf("la as a pointer looks like %p\n", la);
-   cprintf("current la: %p\n", la);
    mappages(proc->pgdir, la, PGSIZE, (unsigned int) shmem_addr[pgNum], PTE_W | PTE_U);
    shmem_count[pgNum]  = shmem_count[pgNum] + 1;
-   shmem_procpages[arrindex][0] = proc->pid;
+   shmem_procpages[arrindex][0] = proc->pgdir;
    shmem_procpages[arrindex][pgNum+1] = (int) la;
    return la;
+}
+
+void shmem_dealloc(pde_t *pgdir) {
+   int i, j;
+   for (i=0; i<10; i++) {
+      if (shmem_procpages[i][0] == pgdir) {
+         for (j=0; j<5; j++) {
+            shmem_procpages[i][j] = 0;
+         }
+      }
+   }
 }
 
 //int

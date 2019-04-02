@@ -77,6 +77,7 @@ struct proc {
   int tickets;		       // Calculates stride
   int stride;		       // Large number/Num of tickets to det. %
   int passValue;	       // Counter w/ stride value
+  int hasShmem;                // determines if proc accessed shared pages
 };
 
 // Process memory is laid out contiguously, low addresses first:
